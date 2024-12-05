@@ -1,0 +1,190 @@
+// package web_test
+
+// import (
+// 	"bytes"
+// 	"database/sql"
+// 	"encoding/json"
+// 	"io"
+// 	"net/http"
+// 	"net/http/httptest"
+// 	"os"
+// 	"strconv"
+// 	"testing"
+
+// 	"github.com/alexedwards/scs/v2"
+// 	"github.com/bernhardson/stub/internal/models"
+// 	"github.com/bernhardson/stub/internal/repo"
+// 	"github.com/bernhardson/stub/internal/web"
+// 	"github.com/rs/zerolog"
+// )
+
+// var (
+// 	app      *web.Application
+// 	router   http.Handler
+// 	testUser = models.User{
+// 		Username: "testuser",
+// 		Email:    "testuser@example.com",
+// 		Password: "securepassword",
+// 	}
+// )
+
+// // func TestMain(m *testing.M) {
+// // 	// Load environment variables
+// // 	if err := godotenv.Load(); err != nil {
+// // 		panic("failed to load environment variables")
+// // 	}
+
+// // 	datasource := os.Getenv("DATA_SOURCE")
+// // 	db, err := repo.Connect(datasource)
+// // 	if err != nil {
+// // 		panic(err)
+// // 	}
+// // 	// Initialize test application
+// // 	app, router, err = setupApp(datasource, db)
+// // 	if err != nil {
+// // 		panic(err)
+// // 	}
+
+// // 	// Run tests
+// // 	code := m.Run()
+
+// // 	// Clean up
+// // 	teardown(app.UserRepo)
+
+// // 	os.Exit(code)
+// // }
+
+// // setupApp initializes the application, router, and dependencies for tests
+// func setupApp(datasource string, db *sql.DB) (*web.Application, http.Handler, error) {
+// 	// Connect to the database
+// 	userRepo, err := repo.UserRepoFactory(datasource, db)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+
+// 	// Create logger
+// 	logger := zerolog.New(os.Stderr).Level(zerolog.DebugLevel)
+// 	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+// 		level, err := zerolog.ParseLevel(logLevel)
+// 		if err != nil {
+// 			return nil, nil, err
+// 		}
+// 		logger = logger.Level(level)
+// 	}
+
+// 	// Create the application and router
+// 	app := &web.Application{
+// 		UserRepo:       userRepo,
+// 		Logger:         &logger,
+// 		SessionManager: &scs.SessionManager{},
+// 	}
+// 	return app, app.Routes(), nil
+// }
+
+// // teardown cleans up the database after tests
+// func teardown(repo repo.UserRepository) {
+// 	if err := repo.ClearTable("users"); err != nil {
+// 		panic(err)
+// 	}
+// }
+
+// // Helper function to create a user in the system\
+// func createTestUser(repo repo.UserRepository, name string, email string, password string) (*models.User, error) {
+// 	sqlRes, err := repo.Insert(name, email, password)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// Fetch the ID of the inserted user
+// 	id, err := sqlRes.LastInsertId()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// Fetch the inserted user
+// 	insertedUser, err := repo.Get(id)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return insertedUser, nil
+// }
+
+// // Helper function to make HTTP requests and return responses
+// func makeRequest(router http.Handler, method, path string, body interface{}) (*http.Response, []byte, error) {
+// 	var req *http.Request
+// 	if body != nil {
+// 		jsonData, err := json.Marshal(body)
+// 		if err != nil {
+// 			return nil, nil, err
+// 		}
+// 		req = httptest.NewRequest(method, path, bytes.NewReader(jsonData))
+// 		req.Header.Set("Content-Type", "application/json")
+// 	} else {
+// 		req = httptest.NewRequest(method, path, nil)
+// 	}
+
+// 	rec := httptest.NewRecorder()
+// 	router.ServeHTTP(rec, req)
+
+// 	res := rec.Result()
+// 	defer res.Body.Close()
+
+// 	resBody, err := io.ReadAll(res.Body)
+// 	return res, resBody, err
+// }
+
+// // Tests
+// func TestCreateUser(t *testing.T) {
+
+// 	res, _, err := makeRequest(router, http.MethodPost, "/user/signup", testUser)
+// 	if err != nil {
+// 		t.Fatalf("failed to make request: %v", err)
+// 	}
+
+// 	if res.StatusCode != http.StatusCreated {
+// 		t.Errorf("expected status %d, got %d", http.StatusCreated, res.StatusCode)
+// 	}
+// }
+
+// func TestAuthenticateUser(t *testing.T) {
+
+// 	res, _, err := makeRequest(router, http.MethodPost, "/user/login", testUser)
+// 	if err != nil {
+// 		t.Fatalf("failed to make request: %v", err)
+// 	}
+
+// 	if res.StatusCode != http.StatusCreated {
+// 		t.Errorf("expected status %d, got %d", http.StatusCreated, res.StatusCode)
+// 	}
+// }
+
+// func TestGetUser(t *testing.T) {
+// 	// Create a test user directly in the database
+// 	name, email, password := "integrationtestuser", "integration@example.com", "securepassword"
+
+// 	insertedUser, err := createTestUser(app.UserRepo, name, email, password)
+// 	if err != nil {
+// 		t.Fatalf("failed to create test user: %v", err)
+// 	}
+
+// 	// Fetch the user by ID via HTTP
+// 	path := "/users/" + strconv.Itoa(insertedUser.ID)
+// 	res, resBody, err := makeRequest(router, http.MethodGet, path, nil)
+// 	if err != nil {
+// 		t.Fatalf("failed to make request: %v", err)
+// 	}
+
+// 	if res.StatusCode != http.StatusOK {
+// 		t.Errorf("expected status %d, got %d", http.StatusOK, res.StatusCode)
+// 	}
+
+// 	var fetchedUser models.User
+// 	if err := json.Unmarshal(resBody, &fetchedUser); err != nil {
+// 		t.Fatalf("failed to unmarshal response: %v", err)
+// 	}
+
+// 	if fetchedUser.Username != name || fetchedUser.Email != email {
+// 		t.Errorf("unexpected user data: %+v", fetchedUser)
+// 	}
+// }
