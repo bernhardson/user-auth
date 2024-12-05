@@ -1,0 +1,9 @@
+POST https://localhost:8089/user/signup/
+Content-Type: application/json
+
+{
+    "username": "durden",
+    "email": "durden@web.de",
+    "password":"12345678"
+}
+
