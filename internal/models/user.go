@@ -6,6 +6,6 @@ type User struct {
 	ID       int64     `json:"-"`
 	Username string    `json:"username"`
 	Email    string    `json:"email"`
-	Password string    `json:"-"`
+	Password string    `json:"password"`
 	Created  time.Time `json:"created"`
 }
