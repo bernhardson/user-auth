@@ -40,6 +40,20 @@ func (p *UserRepoPostgresImpl) Get(id int64) (*models.User, error) {
 	return &user, nil
 }
 
+// Get retrieves a user by Email.
+func (p *UserRepoPostgresImpl) GetByEmail(email string) (*models.User, error) {
+	var user models.User
+	query := `SELECT id, username, email, password, create FROM users WHERE id = $1`
+	err := p.db.QueryRow(query, email).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Created)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no user found with id %s", email)
+		}
+		return nil, fmt.Errorf("failed to fetch user: %v", err)
+	}
+	return &user, nil
+}
+
 // GetAll retrieves all users.
 func (p *UserRepoPostgresImpl) GetAll() (*[]models.User, error) {
 	query := `SELECT id, username, email, password, create FROM users`

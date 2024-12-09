@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,7 +18,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func newTestApplication(t *testing.T) *Application {
+func newTestApplication() *Application {
 
 	sessionManager := scs.New()
 	sessionManager.Lifetime = 12 * time.Hour
@@ -38,13 +39,11 @@ type testServer struct {
 func newTestServer(t *testing.T, h http.Handler) *testServer {
 	// Initialize the test server as normal.
 	ts := httptest.NewTLSServer(h)
-
 	// Initialize a new cookie jar.
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	// Add the cookie jar to the test server client. Any response cookies will
 	// now be stored and sent with subsequent requests when using this client.
 	ts.Client().Jar = jar
@@ -57,19 +56,36 @@ func newTestServer(t *testing.T, h http.Handler) *testServer {
 }
 
 func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, string) {
-	rs, err := ts.Client().Get(ts.URL + urlPath)
+	// Create a full URL for the request
+	url := ts.URL + urlPath
+
+	// Use ts.Client().Get to send the request directly
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer rs.Body.Close()
-	body, err := io.ReadAll(rs.Body)
+	// Add custom context values
+	ctx := req.Context()
+	var contextKey contextKey = "isAuthenticated"
+	ctx = context.WithValue(ctx, contextKey, "1")
+	req = req.WithContext(ctx)
+
+	// Send the request using the test server's client
+	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bytes.TrimSpace(body)
+	defer resp.Body.Close()
 
-	return rs.StatusCode, rs.Header, string(body)
+	// Read and process the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Return status code, headers, and trimmed body
+	return resp.StatusCode, resp.Header, string(bytes.TrimSpace(body))
 }
 
 func post[T any](testing *testing.T, url string, t T, ts *testServer) (int, string) {

@@ -31,6 +31,15 @@ func (m *MockUserRepo) Get(id int64) (*models.User, error) {
 	}
 }
 
+func (m *MockUserRepo) GetByEmail(id string) (*models.User, error) {
+	switch id {
+	case "john.doe@gmail.com":
+		return &mockUser, nil
+	default:
+		return nil, models.ErrNoRecord
+	}
+}
+
 func (m *MockUserRepo) GetAll() (*[]models.User, error) {
 
 	var mockUsers = make([]models.User, 1)

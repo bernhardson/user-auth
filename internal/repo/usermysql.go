@@ -57,6 +57,20 @@ func (r *UserRepoMySqlImpl) Get(id int64) (*models.User, error) {
 	return &user, nil
 }
 
+// Get retrieves a user by ID from the MySQL database.
+func (r *UserRepoMySqlImpl) GetByEmail(email string) (*models.User, error) {
+	var user models.User
+	query := "SELECT id, username, email, hashed_password, created FROM users WHERE email = ?"
+	err := r.db.QueryRow(query, email).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Created)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no user found with id %s", email)
+		}
+		return nil, fmt.Errorf("failed to fetch user: %v", err)
+	}
+	return &user, nil
+}
+
 // GetAll retrieves all users from the MySQL database.
 func (r *UserRepoMySqlImpl) GetAll() (*[]models.User, error) {
 	query := "SELECT id, username, email, hashed_password, create FROM users"

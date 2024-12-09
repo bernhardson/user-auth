@@ -29,8 +29,8 @@ func run(getEnv func(string) string) error {
 		return err
 	}
 
-	certPath := getEnv("TLS_CERT_PATH")
-	keyPath := getEnv("TLS_KEY_PATH")
+	certPath := getEnv("ROOT_DIR") + getEnv("TLS_CERT_PATH")
+	keyPath := getEnv("ROOT_DIR") + getEnv("TLS_KEY_PATH")
 	err = srv.ListenAndServeTLS(certPath, keyPath)
 	if err != nil {
 		return err

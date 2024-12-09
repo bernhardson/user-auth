@@ -4,26 +4,32 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/bernhardson/stub/internal/models"
 	"github.com/bernhardson/stub/internal/validator"
-	"github.com/julienschmidt/httprouter"
 )
 
-func (app *Application) getUser(w http.ResponseWriter, r *http.Request) {
-	params := httprouter.ParamsFromContext(r.Context())
+var v = validator.Validator{}
 
-	id, err := strconv.Atoi(params.ByName("id"))
-	if err != nil || id < 1 {
-		app.notFound(w)
+func (app *Application) getUser(w http.ResponseWriter, r *http.Request) {
+
+	query := r.URL.Query()
+	email := query.Get("email")
+
+	v.CheckField(validator.Matches(email, validator.EmailRX), "email", "Entered email adress is not valid.")
+	v.CheckField(validator.NotBlank(email), "email", "Email cannot be blank.")
+
+	if !v.Valid() {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"errors": v.FieldErrors,
+		})
 		return
 	}
 
-	user, err := app.UserRepo.Get(int64(id))
-
+	user, err := app.UserRepo.GetByEmail(email)
 	if err != nil {
-		if user == nil {
+		if err == models.ErrNoRecord {
 			app.notFound(w)
 		} else {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -142,7 +148,7 @@ func (app *Application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.SessionManager.Remove(r.Context(), "authenticatedUserID")
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (app *Application) Ping(w http.ResponseWriter, r *http.Request) {

@@ -31,7 +31,7 @@ func (app *Application) Routes() http.Handler {
 	router.Handler(http.MethodPost, "/user/signup", standard.ThenFunc(app.userSignupPost))
 	router.Handler(http.MethodPost, "/user/login", dynamic.ThenFunc(app.userLoginPost))
 	router.Handler(http.MethodPost, "/user/logout", dynamic.ThenFunc(app.userLogoutPost))
-	router.Handler(http.MethodGet, "/user/view/:id", protected.ThenFunc(app.getUser))
+	router.Handler(http.MethodGet, "/user/view", protected.ThenFunc(app.getUser))
 	router.Handler(http.MethodGet, "/ping", http.HandlerFunc(app.Ping))
 
 	return standard.Then(router)

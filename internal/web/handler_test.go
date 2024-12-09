@@ -2,8 +2,10 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/bernhardson/stub/internal/assert"
@@ -12,51 +14,58 @@ import (
 
 func TestUserGet(t *testing.T) {
 
-	app := newTestApplication(t)
+	app := newTestApplication()
 
 	ts := newTestServer(t, app.Routes())
 	defer ts.Close()
 
 	tests := []struct {
-		name          string
-		urlPath       string
-		expectedCode  int
-		expectedEmail string
+		name            string
+		urlPath         string
+		expectedCode    int
+		email           string
+		isAuthenticated int
 	}{
 		{
-			name:          "valid",
-			urlPath:       "/user/view/1",
-			expectedCode:  http.StatusOK,
-			expectedEmail: "john.doe@gmail.com",
+			name:            "valid",
+			urlPath:         "/user/view?email=",
+			expectedCode:    http.StatusOK,
+			email:           "john.doe@gmail.com",
+			isAuthenticated: 1,
 		},
 		{
-			name:         "not-existent-1",
-			urlPath:      "/user/view/2",
-			expectedCode: http.StatusNotFound,
-		},
-		{
-			name:         "not-existent-2",
-			urlPath:      "/user/view/-1",
-			expectedCode: http.StatusNotFound,
-		},
-		{
-			name:         "not-existent-3",
-			urlPath:      "/user/view/1.23",
-			expectedCode: http.StatusNotFound,
+			name:            "not-existent-1",
+			urlPath:         "/user/view?email=",
+			email:           "john@gmail.co",
+			expectedCode:    http.StatusNotFound,
+			isAuthenticated: 0,
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			code, _, body := ts.get(t, tt.urlPath)
-			assert.Equal(t, code, tt.expectedCode)
-			assert.StringContains(t, body, tt.expectedEmail)
-		})
+
+		req, err := http.NewRequest("GET", tt.urlPath+tt.email, nil)
+
+		if err != nil {
+			t.Fatalf("could not create request: %v", err)
+		}
+		ctx := context.WithValue(req.Context(), "authenticatedUserID", tt.isAuthenticated)
+		req = req.WithContext(ctx)
+		// Add necessary headers or context as needed
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(app.Routes().ServeHTTP)
+
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status OK, got %v", rr.Code)
+		}
 	}
+
 }
 
 func TestUserSignUpPost(t *testing.T) {
-	app := newTestApplication(t)
+	app := newTestApplication()
 
 	ts := newTestServer(t, app.Routes())
 	defer ts.Close()
@@ -121,7 +130,7 @@ func TestUserSignUpPost(t *testing.T) {
 }
 
 func TestUserLoginPost(t *testing.T) {
-	app := newTestApplication(t)
+	app := newTestApplication()
 
 	ts := newTestServer(t, app.Routes())
 	defer ts.Close()
@@ -179,7 +188,7 @@ func TestUserLoginPost(t *testing.T) {
 
 func TestPing(t *testing.T) {
 
-	app := newTestApplication(t)
+	app := newTestApplication()
 
 	ts := newTestServer(t, app.Routes())
 	defer ts.Close()

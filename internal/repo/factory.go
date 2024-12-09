@@ -10,6 +10,7 @@ import (
 type UserRepository interface {
 	Get(int64) (*models.User, error)
 	GetAll() (*[]models.User, error)
+	GetByEmail(string) (*models.User, error)
 	Insert(string, string, string) (int, error)
 	DeleteUser(int) (int, error)
 	Authenticate(email, password string) (int, error)
